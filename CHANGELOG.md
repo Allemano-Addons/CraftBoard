@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.1 – 2026-09-29
+- Fix: the window failed to open (a "." instead of ":" on the separator line).
+
 ## 0.2.0 – 2026-09-29
 - Step 3: the CraftBoard window (`/cb` or the violet launcher button): professions on the left with
   an "online crafters only" filter and a "You share" panel, recipe search (name or reagent) and list
