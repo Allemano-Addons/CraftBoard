@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: CraftBoard
 ## Notes: Who in your guild can craft what. Part of Allemano Addons. (Recipe sharing)
-## Version: 0.4.1
+## Version: 0.5.0
 ## SavedVariables: CraftBoardDB
 
 Core.lua
@@ -10,6 +10,7 @@ GuildProfessions.lua
 Widgets.lua
 Catalog.lua
 Window.lua
+Settings.lua
 Share.lua
 Launcher.lua
 Probe.lua

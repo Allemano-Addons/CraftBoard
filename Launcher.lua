@@ -49,12 +49,24 @@ local function build()
         W.HideTooltip()
     end)
     button:SetScript("OnClick", function() CB.Window.Toggle() end)
-    button:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    button:SetScript("OnDragStart", function(self)
+        if not CB.db.settings.launcherLocked then self:StartMoving() end
+    end)
     button:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         savePosition()
     end)
     restorePosition()
+    button:SetShown(CB.db.settings.launcher ~= false)
 end
+
+function CB.ResetLauncherPosition()
+    CB.db.settings.launcherLeft, CB.db.settings.launcherTop = nil, nil
+    if button then restorePosition() end
+end
+
+CB:OnSettingChanged(function(key, value)
+    if key == "launcher" and button then button:SetShown(value ~= false) end
+end)
 
 CB:RegisterEvent("PLAYER_LOGIN", function() CB:Call("launcher", build) end)

@@ -23,16 +23,20 @@ Theme.colors = {
     textFaint = { hex("6E757E") },
     good      = { hex("3FC77F") },
     warn      = { hex("E8A33D") },
-    accent    = { hex(CB.COLOR) },
 }
 Theme.radius = { control = 6, panel = 10, small = 4 }
 
-Theme.FONT = "Fonts\\FRIZQT__.TTF"
-Theme.SIZE = 12
+Theme.TEXT_SIZES = { S = 11, M = 12, L = 13 }
+-- Presets for the "custom" accent (the first is the CraftBoard orange).
+Theme.ACCENTS = { "F0763A", "E8A33D", "3FC77F", "3FD0E0", "5B8CFF", "B57EDC", "E0564F", "E6E8EB" }
+Theme.OWN_ACCENT = CB.COLOR
+
+local function settings() return CB.db and CB.db.settings or {} end
 
 local MEDIA = "Interface\\AddOns\\" .. addonName .. "\\Media\\"
 
 function Theme:Color(key)
+    if key == "accent" then return self:Accent() end
     local c = self.colors[key]
     return c[1], c[2], c[3]
 end
@@ -42,6 +46,112 @@ function Theme.ClassColor(classFile)
     local c = classFile and colors and colors[classFile]
     if c then return c.r, c.g, c.b end
     return Theme:Color("text")
+end
+
+-- Hush's accent if Hush is installed (read only; HushDB is complete once every addon loaded).
+local function hushAccent()
+    local s = type(HushDB) == "table" and type(HushDB.settings) == "table" and HushDB.settings or nil
+    if not s then return nil end
+    if s.useClassColor then
+        local r, g, b = Theme.ClassColor(select(2, UnitClass("player")))
+        if r then return r, g, b end
+    end
+    if type(s.accent) == "string" and #s.accent == 6 then return hex(s.accent) end
+end
+function Theme.HasHush() return type(HushDB) == "table" end
+
+-- accentMode: "own" (CraftBoard orange), "hush" (follow Hush, else own), "class" or "custom".
+function Theme:Accent()
+    local s = settings()
+    if s.accentMode == "class" then
+        return Theme.ClassColor(select(2, UnitClass("player")))
+    elseif s.accentMode == "custom" then
+        return hex(s.accent or Theme.OWN_ACCENT)
+    elseif s.accentMode == "hush" then
+        local r, g, b = hushAccent()
+        if r then return r, g, b end
+    end
+    return hex(Theme.OWN_ACCENT)
+end
+
+-- "rrggbb" of the accent, for |cff...|r color codes.
+function Theme:AccentHex()
+    local r, g, b = self:Accent()
+    return ("%02x%02x%02x"):format(floor(r * 255 + 0.5), floor(g * 255 + 0.5), floor(b * 255 + 0.5))
+end
+
+-- ---------------------------------------------------------------------------
+-- Fonts. Font files in new addon folders are refused on WoW Forever, so the choice is
+-- the game's fonts plus any LibSharedMedia fonts other addons registered.
+-- ---------------------------------------------------------------------------
+
+local FALLBACK = "Fonts\\FRIZQT__.TTF"
+local BUILTIN_FONTS = {
+    { name = "Friz Quadrata", path = "Fonts\\FRIZQT__.TTF" },
+    { name = "Arial Narrow",  path = "Fonts\\ARIALN.TTF" },
+    { name = "Skurri",        path = "Fonts\\skurri.ttf" },
+    { name = "Morpheus",      path = "Fonts\\MORPHEUS.ttf" },
+}
+
+local function normalizePath(p) return p and strlower((p:gsub("/", "\\"))) or "" end
+
+local probe
+local validCache = {}
+-- Does this font file load here? (cached per path)
+local function valid(path)
+    if not path then return false end
+    if validCache[path] == nil then
+        probe = probe or UIParent:CreateFontString(nil, "BACKGROUND")
+        probe:SetFont(FALLBACK, 12, "")
+        local ok = probe:SetFont(path, 12, "")
+        if ok == nil then ok = normalizePath(probe:GetFont()) == normalizePath(path) end
+        validCache[path] = ok and true or false
+    end
+    return validCache[path]
+end
+
+local function lsm() return LibStub and LibStub("LibSharedMedia-3.0", true) end
+
+-- { { name, path }, ... }: game fonts first, then shared fonts by name.
+function Theme:AvailableFonts()
+    local list, seen = {}, {}
+    local function add(name, path)
+        local key = normalizePath(path)
+        if not seen[key] and valid(path) then
+            seen[key] = true
+            list[#list + 1] = { name = name, path = path }
+        end
+    end
+    for _, f in ipairs(BUILTIN_FONTS) do add(f.name, f.path) end
+    local L = lsm()
+    if L then
+        local shared = {}
+        for name, path in pairs(L:HashTable("font") or {}) do shared[#shared + 1] = { name = name, path = path } end
+        sort(shared, function(a, b) return a.name < b.name end)
+        for _, f in ipairs(shared) do add(f.name, f.path) end
+    end
+    return list
+end
+
+local function fontPath(name)
+    for _, f in ipairs(BUILTIN_FONTS) do if f.name == name then return f.path end end
+    local L = lsm()
+    return L and L:IsValid("font", name) and L:Fetch("font", name) or nil
+end
+
+-- The chosen font's path, or the game font if it is missing/refused.
+function Theme:FontPath()
+    local p = fontPath(settings().font)
+    return p and valid(p) and p or FALLBACK
+end
+
+function Theme:TextSize(delta)
+    return (self.TEXT_SIZES[settings().textSize] or 12) + (delta or 0)
+end
+
+function Theme:SetFont(fs, delta)
+    fs:SetFont(self:FontPath(), self:TextSize(delta), "")
+    if fs.SetShadowOffset then fs:SetShadowOffset(0, 0) end
 end
 
 -- One physical pixel in UI units, so 1 px lines stay sharp at any UI scale.
@@ -56,6 +166,31 @@ end
 
 local W = {}
 CB.W = W
+
+-- Every text is registered so a font / size change applies at once.
+local fontItems = {}
+function W.RefreshFonts()
+    for i = 1, #fontItems do Theme:SetFont(fontItems[i].fs, fontItems[i].delta) end
+end
+
+-- Accent: fn(r, g, b) now and on every accent change.
+local accentFns = {}
+function W.OnAccent(fn)
+    accentFns[#accentFns + 1] = fn
+    fn(Theme:Accent())
+end
+function W.ApplyAccent()
+    local r, g, b = Theme:Accent()
+    for i = 1, #accentFns do accentFns[i](r, g, b) end
+end
+
+CB:OnSettingChanged(function(key)
+    if key == "font" or key == "textSize" then
+        W.RefreshFonts()
+    elseif key == "accentMode" or key == "accent" then
+        W.ApplyAccent()
+    end
+end)
 
 -- Pixel-sized textures, re-sized when the UI scale changes.
 local pixelItems = {}
@@ -314,11 +449,12 @@ end
 
 function W.Text(parent, delta, colorKey, layer)
     local fs = parent:CreateFontString(nil, layer or "OVERLAY")
-    fs:SetFont(Theme.FONT, Theme.SIZE + (delta or 0), "")
-    fs:SetShadowOffset(0, 0)
+    Theme:SetFont(fs, delta)
     fs:SetTextColor(Theme:Color(colorKey or "text"))
     fs:SetJustifyH("LEFT")
     fs:SetWordWrap(false)
+    fontItems[#fontItems + 1] = { fs = fs, delta = delta }
+    if colorKey == "accent" then W.OnAccent(function(r, g, b) fs:SetTextColor(r, g, b) end) end
     return fs
 end
 
@@ -462,6 +598,7 @@ function W.Button(parent, label, kind, onClick, iconName)
     b.text:SetText(label)
     place()
     paint(false)
+    W.OnAccent(function() paint(false) end)
     b:SetScript("OnEnter", function() paint(true) end)
     b:SetScript("OnLeave", function() paint(false) end)
     b:SetScript("OnClick", onClick)
@@ -481,7 +618,8 @@ function W.EditBox(parent, placeholder, height)
     local e = CreateFrame("EditBox", nil, parent)
     e:SetHeight(height or 32)
     e:SetAutoFocus(false)
-    e:SetFont(Theme.FONT, Theme.SIZE + 1, "")
+    Theme:SetFont(e, 1)
+    fontItems[#fontItems + 1] = { fs = e, delta = 1 }
     e:SetTextColor(Theme:Color("text"))
     e:SetTextInsets(36, 10, 0, 0)
     e.bg, e.border = W.Surface(e, "field", 1, Theme.radius.control)
@@ -535,6 +673,7 @@ function W.Toggle(parent, onChange)
         if onChange then onChange(self.value) end
     end)
     t:Set(false)
+    W.OnAccent(function() if t.value ~= nil then t:Set(t.value) end end)
     return t
 end
 
@@ -603,4 +742,241 @@ function W.VirtualList(parent, rowH, createRow, updateRow)
     end)
     list:SetScript("OnSizeChanged", function(self) self:Refresh() end)
     return list
+end
+
+-- ---------------------------------------------------------------------------
+-- Settings controls: segmented choice, slider, dropdown, color swatch, context menu.
+-- ---------------------------------------------------------------------------
+
+-- options: { { value = "S", label = "S" }, ... }
+function W.Segment(parent, options, onChange)
+    local s = CreateFrame("Frame", nil, parent)
+    s:SetHeight(24)
+    s.buttons = {}
+    local x = 0
+    for i, opt in ipairs(options) do
+        local b = CreateFrame("Button", nil, s)
+        b.value = opt.value
+        b.bg = W.Fill(b, "field", 1)
+        b.bg:SetAllPoints()
+        W.Round(b.bg, Theme.radius.small)
+        b.text = W.Text(b, -1, "textDim")
+        b.text:SetPoint("CENTER")
+        b.text:SetText(opt.label)
+        local w = max(40, b.text:GetStringWidth() + 20)
+        b:SetSize(w, 24)
+        b:SetPoint("LEFT", x, 0)
+        x = x + w + 2
+        b:SetScript("OnClick", function(self)
+            s:Set(self.value)
+            if onChange then onChange(self.value) end
+        end)
+        b:SetScript("OnEnter", function(self) if self.value ~= s.value then self.text:SetTextColor(Theme:Color("text")) end end)
+        b:SetScript("OnLeave", function() s:Set(s.value) end)
+        s.buttons[i] = b
+    end
+    s:SetWidth(x - 2)
+    W.RoundBorder(W.Border(s, "line"), Theme.radius.small)
+    function s:Set(value)
+        self.value = value
+        local r, g, bl = Theme:Accent()
+        for _, b in ipairs(self.buttons) do
+            if b.value == value then
+                b.bg:SetColorTexture(r, g, bl, 1)
+                b.text:SetTextColor(Theme:Color("sidebar"))
+            else
+                b.bg:SetColorTexture(Theme:Color("field"))
+                b.text:SetTextColor(Theme:Color("textDim"))
+            end
+        end
+    end
+    W.OnAccent(function() if s.value ~= nil then s:Set(s.value) end end)
+    return s
+end
+
+-- Horizontal slider. format(value) -> label text.
+function W.Slider(parent, minV, maxV, step, width, format, onChange)
+    local s = CreateFrame("Slider", nil, parent)
+    s:SetOrientation("HORIZONTAL")
+    s:SetSize(width or 200, 16)
+    s:SetMinMaxValues(minV, maxV)
+    s:SetValueStep(step)
+    if s.SetObeyStepOnDrag then s:SetObeyStepOnDrag(true) end
+    s.track = W.Fill(s, "line", 1, "BACKGROUND")
+    s.track:SetPoint("LEFT")
+    s.track:SetPoint("RIGHT")
+    s.track:SetHeight(2)
+    local thumb = s:CreateTexture(nil, "OVERLAY")
+    thumb:SetSize(10, 16)
+    s:SetThumbTexture(thumb)
+    W.OnAccent(function(r, g, b) thumb:SetColorTexture(r, g, b, 1) end)
+    s.label = W.Text(s, -1, "textDim")
+    s.label:SetPoint("LEFT", s, "RIGHT", 10, 0)
+    s.silent = false
+    s:SetScript("OnValueChanged", function(self, value)
+        value = floor(value / step + 0.5) * step
+        self.label:SetText(format and format(value) or tostring(value))
+        if not self.silent and onChange then onChange(value) end
+    end)
+    s:EnableMouseWheel(false)
+    function s:Set(value)
+        self.silent = true
+        self:SetValue(value)
+        self.label:SetText(format and format(value) or tostring(value))
+        self.silent = false
+    end
+    return s
+end
+
+-- Square color swatch (hex "RRGGBB") with a selection ring.
+function W.Swatch(parent, hexColor, onClick)
+    local r, g, b = Theme.Hex(hexColor)
+    local s = CreateFrame("Button", nil, parent)
+    s:SetSize(22, 22)
+    s.ring = W.Border(s, "line")
+    s.fill = s:CreateTexture(nil, "ARTWORK")
+    s.fill:SetPoint("TOPLEFT", 3, -3)
+    s.fill:SetPoint("BOTTOMRIGHT", -3, 3)
+    s.fill:SetColorTexture(r, g, b, 1)
+    s.fill.cbColor = { r, g, b, 1 }
+    W.Round(s.fill, Theme.radius.small)
+    W.RoundBorder(s.ring, Theme.radius.control)
+    function s:SetSelected(on)
+        local cr, cg, cb = Theme:Color(on and "text" or "line")
+        self.ring:SetColor(cr, cg, cb, 1)
+    end
+    s:SetScript("OnClick", function() if onClick then onClick() end end)
+    return s
+end
+
+-- A full-screen invisible catcher closes the menu on any click outside it.
+local catcher, menu
+
+local function closeMenus()
+    if menu then menu:Hide() end
+    if catcher then catcher:Hide() end
+end
+W.CloseMenus = closeMenus
+
+local function getCatcher()
+    if not catcher then
+        catcher = CreateFrame("Button", nil, UIParent)
+        catcher:SetAllPoints(UIParent)
+        catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+        catcher:RegisterForClicks("AnyUp")
+        catcher:SetScript("OnClick", closeMenus)
+    end
+    catcher:Show()
+    return catcher
+end
+
+local function menuButton(parent)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetHeight(22)
+    b.bg = W.Fill(b, "selected", 1)
+    b.bg:SetPoint("TOPLEFT", 3, 0)
+    b.bg:SetPoint("BOTTOMRIGHT", -3, 0)
+    W.Round(b.bg, Theme.radius.small)
+    b.bg:Hide()
+    b.text = W.Text(b, 0, "text")
+    b.text:SetPoint("LEFT", 10, 0)
+    b:SetScript("OnEnter", function(self) self.bg:Show() end)
+    b:SetScript("OnLeave", function(self) self.bg:Hide() end)
+    return b
+end
+
+function W.IsMenuOpen() return menu ~= nil and menu:IsShown() end
+
+-- items = { { text, onClick, checked, font }, ... }. Checked items use the accent, font
+-- previews the item in that font. Long lists wrap into columns of at most 18 rows.
+function W.OpenMenu(items, anchor)
+    closeMenus()
+    getCatcher()
+    if not menu then
+        menu = CreateFrame("Frame", nil, UIParent)
+        menu:SetFrameStrata("FULLSCREEN_DIALOG")
+        menu:SetClampedToScreen(true)
+        menu:EnableMouse(true)
+        W.Surface(menu, "field", 0.98, Theme.radius.control)
+        menu.buttons = {}
+    end
+    menu:SetFrameLevel(catcher:GetFrameLevel() + 10)
+    local width = 120
+    for i, item in ipairs(items) do
+        local b = menu.buttons[i] or menuButton(menu)
+        menu.buttons[i] = b
+        b:SetFrameLevel(menu:GetFrameLevel() + 1)
+        if item.font then
+            b.text:SetFont(item.font, Theme:TextSize(), "")
+        else
+            Theme:SetFont(b.text)
+        end
+        b.text:SetText(item.text)
+        if item.checked then
+            b.text:SetTextColor(Theme:Accent())
+        else
+            b.text:SetTextColor(Theme:Color("text"))
+        end
+        b:SetScript("OnClick", function()
+            closeMenus()
+            if item.onClick then CB:Call("menu: " .. tostring(item.text), item.onClick) end
+        end)
+        b:Show()
+        width = max(width, b.text:GetStringWidth() + 30)
+    end
+    for i = #items + 1, #menu.buttons do menu.buttons[i]:Hide() end
+    local perCol = min(#items, 18)
+    local cols = ceil(#items / perCol)
+    for i = 1, #items do
+        local b = menu.buttons[i]
+        local col, row = floor((i - 1) / perCol), (i - 1) % perCol
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", 1 + col * width, -4 - row * 22)
+        b:SetWidth(width - 2)
+    end
+    menu:SetSize(width * cols, perCol * 22 + 8)
+    menu:ClearAllPoints()
+    menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
+    menu:Show()
+end
+
+-- Dropdown: a field-styled button that opens a menu below itself.
+-- getOptions() -> { { value, label, font = path (optional preview) }, ... }
+function W.Dropdown(parent, width, getOptions, onChange)
+    local d = CreateFrame("Button", nil, parent)
+    d:SetSize(width or 200, 28)
+    d.bg, d.border = W.Surface(d, "field", 1, Theme.radius.control)
+    d.text = W.Text(d, 0, "text")
+    d.text:SetPoint("LEFT", 10, 0)
+    d.text:SetWidth((width or 200) - 30)
+    d.arrow = W.Text(d, -2, "textDim")
+    d.arrow:SetPoint("RIGHT", -10, 0)
+    d.arrow:SetText("v")
+
+    function d:Set(value)
+        self.value = value
+        local label = tostring(value)
+        for _, opt in ipairs(getOptions()) do
+            if opt.value == value then label = opt.label break end
+        end
+        self.text:SetText(label)
+    end
+
+    d:SetScript("OnEnter", function() d.border:SetColor(Theme:Color("textFaint")) end)
+    d:SetScript("OnLeave", function() d.border:SetColor(Theme:Color("line")) end)
+    d:SetScript("OnClick", function(self)
+        if W.IsMenuOpen() then closeMenus() return end
+        local items = {}
+        for _, opt in ipairs(getOptions()) do
+            items[#items + 1] = {
+                text = opt.label, font = opt.font, checked = opt.value == self.value,
+                onClick = function()
+                    self:Set(opt.value)
+                    if onChange then onChange(opt.value) end
+                end,
+            }
+        end
+        W.OpenMenu(items, self)
+    end)
+    return d
 end

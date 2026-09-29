@@ -95,9 +95,9 @@ local function crafterStatus(c, recipe)
     local text = table.concat(parts, " ")
     if recipe.hasCD then
         if c.cdLeft then
-            return text .. " · |cfff0763aCooldown " .. Catalog.FormatDuration(c.cdLeft) .. " left|r"
+            return text .. " · |cff" .. Theme:AccentHex() .. "Cooldown " .. Catalog.FormatDuration(c.cdLeft) .. " left|r"
         end
-        return text .. " · |cfff0763aCooldown ready|r"
+        return text .. " · |cff" .. Theme:AccentHex() .. "Cooldown ready|r"
     end
     return text
 end
@@ -357,7 +357,7 @@ local function updateRecipeRow(row, r)
         row.crafters:SetText(("%d · |cff6e757eoffline|r"):format(total))
     end
     if r.hasCD and r.ready > 0 then
-        row.cooldown:SetText("|cfff0763a" .. r.ready .. " ready now|r")
+        row.cooldown:SetText("|cff" .. Theme:AccentHex() .. "" .. r.ready .. " ready now|r")
     else
         row.cooldown:SetText("|cff6e757e–|r")
     end
@@ -380,6 +380,7 @@ local function createProfRow(list)
     row.mark:SetPoint("LEFT", 10, 0)
     row.mark:SetSize(3, 16)
     W.Round(row.mark, 1)
+    W.OnAccent(function(r, g, b) row.mark:SetColorTexture(r, g, b, 1) end)
     row.icon = W.Icon(row, "recipe", 16, "textDim")
     row.icon:SetPoint("LEFT", 22, 0)
     row.text = W.Text(row, 1, "textDim")
@@ -504,19 +505,27 @@ end
 -- Frame
 -- ---------------------------------------------------------------------------
 
+-- Saved in UIParent units, so a scale change keeps the top-left corner where it was.
 local function savePosition()
     local d = CB.db.settings
-    d.left, d.top = frame:GetLeft(), frame:GetTop()
+    local scale = frame:GetScale()
+    d.left, d.top = frame:GetLeft() * scale, frame:GetTop() * scale
 end
 
 local function restorePosition()
     local d = CB.db.settings
+    local scale = frame:GetScale()
     frame:ClearAllPoints()
     if d.left and d.top then
-        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", d.left, d.top)
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", d.left / scale, d.top / scale)
     else
         frame:SetPoint("CENTER")
     end
+end
+
+function Window.ResetPosition()
+    CB.db.settings.left, CB.db.settings.top = nil, nil
+    if frame then restorePosition() end
 end
 
 function Window:RefreshLists()
@@ -539,7 +548,7 @@ function Window:RefreshLists()
 
     local shared, total = Catalog:MemberCounts()
     local age = CB.syncedAt and ("Synced " .. Catalog.FormatDuration(time() - CB.syncedAt) .. " ago · ") or ""
-    frame.sync:SetText(total > 0 and (age .. "|cfff0763a" .. shared .. "/" .. total .. "|r members") or "Your characters only")
+    frame.sync:SetText(total > 0 and (age .. "|cff" .. Theme:AccentHex() .. "" .. shared .. "/" .. total .. "|r members") or "Your characters only")
 end
 
 function Window:Refresh()
@@ -563,7 +572,8 @@ local function build()
     frame:SetMovable(true)
     frame:EnableMouse(true)
     frame:SetSize(WIDTH, HEIGHT)
-    W.Surface(frame, "window", 0.97, Theme.radius.panel)
+    frame:SetScale(CB.db.settings.scale or 1)
+    frame.bg = W.Surface(frame, "window", CB.db.settings.bgAlpha or 0.97, Theme.radius.panel)
 
     local title = CreateFrame("Frame", nil, frame)
     title:SetPoint("TOPLEFT")
@@ -597,15 +607,17 @@ local function build()
         Window:Refresh()
     end)
     refresh:SetPoint("RIGHT", close, "LEFT", -4, 0)
+    local gear = W.IconButton(title, "settings", "Settings", function() CB.Settings.Toggle() end)
+    gear:SetPoint("RIGHT", refresh, "LEFT", -4, 0)
     local pill = CreateFrame("Frame", nil, title)
     pill:SetHeight(28)
-    pill:SetPoint("RIGHT", refresh, "LEFT", -10, 0)
+    pill:SetPoint("RIGHT", gear, "LEFT", -10, 0)
     W.Surface(pill, "field", 1, Theme.radius.control)
     local dot = pill:CreateTexture(nil, "ARTWORK")
     dot:SetSize(8, 8)
     dot:SetPoint("LEFT", 12, 0)
     W.Round(dot, 4)
-    dot:SetColorTexture(Theme:Color("accent"))
+    W.OnAccent(function(r, g, b) dot:SetColorTexture(r, g, b, 1) end)
     frame.sync = W.Text(pill, 0, "textDim")
     frame.sync:SetPoint("LEFT", dot, "RIGHT", 8, 0)
     frame.sync:SetText("Your characters only")
@@ -656,6 +668,20 @@ local function build()
 end
 
 function Window.Frame() return frame end
+
+-- Settings that change the window itself; fonts and accent colors repaint through the widgets.
+CB:OnSettingChanged(function(key, value)
+    if not frame then return end
+    if key == "scale" then
+        savePosition()
+        frame:SetScale(value)
+        restorePosition()
+    elseif key == "bgAlpha" then
+        frame.bg:SetAlpha(value)
+    elseif key == "accentMode" or key == "accent" or key == "font" or key == "textSize" then
+        Window:RefreshLists()
+    end
+end)
 
 function Window.Toggle()
     if not frame then build() end

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 – 2026-09-30
+- Settings (`/cb settings`, or the gear in the window): font (game fonts plus any LibSharedMedia fonts, with
+  preview), text size, accent color (CraftBoard orange, follow Hush, class, or 8 presets), background
+  opacity, window scale, sharing on/off, "ask the guild now", "clear received data", launcher button
+  show/lock and reset positions. Everything applies at once.
+
+
 ## 0.4.1 – 2026-09-29
 - Reagents are real items now: icon, item tooltip on hover, shift-click links the item in chat,
   a plain click puts its name in the Auction House search box (or in chat if the AH is closed).

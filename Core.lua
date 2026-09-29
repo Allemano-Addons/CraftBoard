@@ -71,11 +71,29 @@ end)
 -- SavedVariables: read at ADDON_LOADED, never at file load (WoW Forever quirk).
 -- ---------------------------------------------------------------------------
 
+CB.DEFAULTS = {
+    font = "Friz Quadrata", textSize = "M", accentMode = "own", accent = "F0763A",
+    scale = 1, bgAlpha = 0.97, launcher = true, launcherLocked = false, share = true,
+}
+
+-- Settings changes apply at once: listeners get (key, value).
+local settingListeners = {}
+
+function CB:OnSettingChanged(fn) settingListeners[#settingListeners + 1] = fn end
+
+function CB:SetSetting(key, value)
+    self.db.settings[key] = value
+    for _, fn in ipairs(settingListeners) do self:Call("setting " .. key, fn, key, value) end
+end
+
 local function initDB()
     if type(CraftBoardDB) ~= "table" then CraftBoardDB = {} end
     local db = CraftBoardDB
     db.schema = db.schema or CB.SCHEMA
     db.settings = db.settings or {}
+    for k, v in pairs(CB.DEFAULTS) do
+        if db.settings[k] == nil then db.settings[k] = v end
+    end
     db.probe = db.probe or {}
     db.chars = db.chars or {}
     db.recipes = db.recipes or {}
