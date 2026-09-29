@@ -44,7 +44,7 @@ local function build()
     local s = CB.db.settings
     frame = CreateFrame("Frame", "CraftBoardSettingsFrame", UIParent)
     tinsert(UISpecialFrames, "CraftBoardSettingsFrame") -- ESC closes it
-    frame:SetFrameStrata("HIGH")
+    frame:SetFrameStrata("DIALOG")
     frame:SetToplevel(true)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
@@ -202,7 +202,11 @@ local function place()
     local main = CB.Window.Frame()
     if main and main:IsShown() and main:GetRight() and
         (main:GetRight() * main:GetEffectiveScale() + WIDTH * frame:GetEffectiveScale()) < UIParent:GetRight() * UIParent:GetEffectiveScale() then
-        frame:SetPoint("TOPLEFT", main, "TOPRIGHT", 8, 0)
+        -- Anchored to the screen, not to the window: resizing the window (scale slider) must not
+        -- carry this one, and the slider under the mouse, along.
+        local k = main:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        local mine = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", (main:GetRight() * k + 8) / mine, (main:GetTop() * k) / mine)
     else
         frame:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
     end

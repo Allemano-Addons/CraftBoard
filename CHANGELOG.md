@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.2 – 2026-09-30
+- Fix: the settings window is anchored to the screen instead of the main window, so it no longer moves
+  (with the scale slider under the mouse) when the main window is rescaled. It also stays above the main window.
+
+
 ## 0.5.1 – 2026-09-30
 - Fix: the window no longer jumps when the scale slider is moved.
 
