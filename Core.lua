@@ -131,12 +131,13 @@ SlashCmdList.CRAFTBOARD = function(msg)
     msg = strtrim(msg or "")
     local cmd, rest = msg:match("^(%S*)%s*(.-)$")
     cmd = strlower(cmd or "")
+    if cmd == "" and slashCommands.open then cmd = "open" end
     local c = slashCommands[cmd]
     if c then
         local ok, err = pcall(c.fn, rest)
         if not ok then CB:RecordError("/cb " .. cmd, err) end
     else
-        CB:Print("CraftBoard v" .. tostring(CB.version) .. " (step 1: own recipes)")
+        CB:Print("CraftBoard v" .. tostring(CB.version) .. " (step 3: window; /cb opens it)")
         for _, name in ipairs(slashOrder) do
             CB:Print(("/cb %s - %s"):format(name, slashCommands[name].help or ""))
         end

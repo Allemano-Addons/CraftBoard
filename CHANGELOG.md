@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 – 2026-09-29
+- Step 3: the CraftBoard window (`/cb` or the violet launcher button): professions on the left with
+  an "online crafters only" filter and a "You share" panel, recipe search (name or reagent) and list
+  in the middle, reagents and crafters (online first, Whisper / Mail) on the right. Shows your own
+  characters now; guild members appear once recipe sharing (step 2) is added.
+- Recipes with a cooldown are remembered as such, so "ready now" works when the cooldown is over.
+
 ## 0.1.0 – 2026-09-29
 - Step 1: recipes for every character are saved automatically whenever a profession window is
   opened (learned recipes, output item, reagents, skill level, cooldown expiry). `/cb recipes` lists them.

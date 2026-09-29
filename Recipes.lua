@@ -86,7 +86,10 @@ local function snapshot(trigger)
             recipes[#recipes + 1] = id
             cacheRecipe(id, info.name, base.professionID)
             local left = cooldownLeft(id)
-            if left then cds[id] = now + left end
+            if left then
+                cds[id] = now + left
+                CB.db.recipes[id].cdr = true -- a recipe with a cooldown, remembered even when it is ready
+            end
         end
     end
 
