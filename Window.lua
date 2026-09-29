@@ -461,7 +461,8 @@ function Window:RefreshLists()
     updateShare()
 
     local shared, total = Catalog:MemberCounts()
-    frame.sync:SetText(total > 0 and ("|cfff0763a" .. shared .. "/" .. total .. "|r members") or "Your characters only")
+    local age = CB.syncedAt and ("Synced " .. Catalog.FormatDuration(time() - CB.syncedAt) .. " ago · ") or ""
+    frame.sync:SetText(total > 0 and (age .. "|cfff0763a" .. shared .. "/" .. total .. "|r members") or "Your characters only")
 end
 
 function Window:Refresh()
@@ -513,7 +514,11 @@ local function build()
 
     local close = W.CloseButton(title, function() frame:Hide() end)
     close:SetPoint("RIGHT", -12, 0)
-    local refresh = W.IconButton(title, "sync", "Refresh (roster and recipes)", function() Window:Refresh() end)
+    local refresh = W.IconButton(title, "sync", "Refresh (roster and recipes)", function()
+        local last = CB.db.lastAsk
+        if CB.Share and (not last or time() - last > 60) then CB.Share.Ask(true) end
+        Window:Refresh()
+    end)
     refresh:SetPoint("RIGHT", close, "LEFT", -4, 0)
     local pill = CreateFrame("Frame", nil, title)
     pill:SetHeight(28)
@@ -527,7 +532,7 @@ local function build()
     frame.sync = W.Text(pill, 0, "textDim")
     frame.sync:SetPoint("LEFT", dot, "RIGHT", 8, 0)
     frame.sync:SetText("Your characters only")
-    pill:SetWidth(200)
+    pill:SetWidth(240)
 
     frame.sidebar = buildSidebar(frame)
     frame.detail = buildDetail(frame)
@@ -595,6 +600,7 @@ local function later()
         CB:Call("window refresh", Window.Refresh, Window)
     end)
 end
+Window.Changed = later
 CB:RegisterEvent("GUILD_ROSTER_UPDATE", later)
 CB:RegisterEvent("GET_ITEM_INFO_RECEIVED", later)
 CB:RegisterEvent("ITEM_DATA_LOAD_RESULT", later)

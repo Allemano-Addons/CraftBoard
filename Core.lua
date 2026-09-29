@@ -79,6 +79,7 @@ local function initDB()
     db.probe = db.probe or {}
     db.chars = db.chars or {}
     db.recipes = db.recipes or {}
+    db.guild = db.guild or {}
     -- Errors from before the saved data was loaded are kept too.
     db.errors = db.errors or {}
     for _, e in ipairs(CB.errors) do tinsert(db.errors, e) end

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 – 2026-09-29
+- Step 2: recipe sharing in the guild. Recipe IDs travel as small addon messages (prefix "CraftBoard",
+  paced, at most 250 bytes); names, output and reagents are asked for once and cached. At login
+  you send a fingerprint of your recipes and ask who else has CraftBoard; members whose data differs
+  are fetched by whisper. Changes are broadcast a few seconds after you open a profession window.
+  Data from other members is kept for offline members and cleared when you change guild.
+- The window now shows "Synced ... ago" and how many members have shared. The refresh button asks the guild.
+- `/cb share on|off`, `/cb sync`, `/cb selftest` (a fake guild member built from your own recipes) and
+  `/cb selftest clear`.
+
+
 ## 0.3.1 – 2026-09-29
 - "You share" dims professions whose window has not been opened yet and says which one to open.
 
