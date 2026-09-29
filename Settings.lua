@@ -176,6 +176,12 @@ local function build()
     end)
     y = y + 40
 
+    -- Tooltips -----------------------------------------------------------------
+    heading(body, "Item tooltips")
+    toggleRow(body, "Show \"Craftable by\"", function() return s.tooltip ~= false end, function(on) set("tooltip", on) end)
+    toggleRow(body, "Include offline members", function() return s.tooltipOffline ~= false end,
+        function(on) set("tooltipOffline", on) end)
+
     -- Launcher -----------------------------------------------------------------
     heading(body, "Launcher button")
     toggleRow(body, "Show button", function() return s.launcher ~= false end, function(on) set("launcher", on) end)

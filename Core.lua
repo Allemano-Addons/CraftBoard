@@ -74,6 +74,7 @@ end)
 CB.DEFAULTS = {
     font = "Friz Quadrata", textSize = "M", accentMode = "own", accent = "F0763A",
     scale = 1, bgAlpha = 0.97, launcher = true, launcherLocked = false, share = true,
+    tooltip = true, tooltipOffline = true,
 }
 
 -- Settings changes apply at once: listeners get (key, value).
@@ -94,7 +95,7 @@ local function initDB()
     for k, v in pairs(CB.DEFAULTS) do
         if db.settings[k] == nil then db.settings[k] = v end
     end
-    db.probe = db.probe or {}
+    db.probe = nil -- step 0 probe data (large), not needed any more
     db.chars = db.chars or {}
     db.recipes = db.recipes or {}
     db.guild = db.guild or {}

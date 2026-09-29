@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 – 2026-09-30
+- Item tooltips get a "Craftable by: ..." line: who in the guild (and which of your characters) can make the
+  item, online members first in their class color, offline ones dimmed, up to six names then "+N more".
+  Settings: show the line, include offline members.
+- The step 0 probe is gone (`/cb probe`), and its large saved data is dropped at login.
+
+
 ## 0.5.2 – 2026-09-30
 - Fix: the settings window is anchored to the screen instead of the main window, so it no longer moves
   (with the scale slider under the mouse) when the main window is rescaled. It also stays above the main window.
