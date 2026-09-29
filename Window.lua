@@ -10,6 +10,7 @@ local WIDTH, HEIGHT = 1060, 640
 local TITLE_H, SIDE_W, DETAIL_W = 46, 214, 300
 local RECIPE_ROW, CRAFTER_ROW, PROF_ROW = 46, 58, 30
 local MAX_REAGENTS = 8
+local REAGENT_ROW = 28
 
 local frame
 local state = { prof = nil, search = "", onlineOnly = false, selected = nil }
@@ -141,6 +142,41 @@ local function updateCrafterRow(row, c)
     end
 end
 
+-- Reagent click: shift = link it in chat (or any edit box that has focus), plain = put the
+-- name in the Auction House search box when the auction house is open.
+local function reagentClick(itemID)
+    if not itemID then return end
+    local link = Catalog:ItemLink(itemID)
+    if IsModifiedClick and IsModifiedClick("CHATLINK") or IsShiftKeyDown() then
+        if link then ChatEdit_InsertLink(link) end
+        return
+    end
+    local name = Catalog:ItemName(itemID)
+    if name and AuctionFrame and AuctionFrame:IsShown() and BrowseName then
+        BrowseName:SetText(name)
+        BrowseName:SetFocus()
+    elseif link then
+        ChatEdit_InsertLink(link)
+    end
+end
+
+-- Puts every reagent of the selected recipe, with counts, in the chat box (max 250 characters).
+local function linkAllReagents()
+    local r = selectedRecipe()
+    if not (r and r.reagents) then return end
+    local parts, length = {}, 0
+    for i = 1, #r.reagents, 2 do
+        local link = Catalog:ItemLink(r.reagents[i])
+        if link then
+            local part = ("%dx %s"):format(r.reagents[i + 1], link)
+            if length + #part + 2 > 250 then break end
+            parts[#parts + 1] = part
+            length = length + #part + 2
+        end
+    end
+    if #parts > 0 then ChatEdit_InsertLink(table.concat(parts, ", ")) end
+end
+
 local function buildDetail(parent)
     local d = CreateFrame("Frame", nil, parent)
     d:SetWidth(DETAIL_W)
@@ -165,18 +201,45 @@ local function buildDetail(parent)
     d.reagentsLabel:SetPoint("TOPLEFT", 16, -84)
     d.reagents = {}
     for i = 1, MAX_REAGENTS do
-        local row = CreateFrame("Frame", nil, d)
-        row:SetHeight(24)
-        row:SetPoint("TOPLEFT", 16, -100 - (i - 1) * 24)
-        row:SetPoint("TOPRIGHT", -14, -100 - (i - 1) * 24)
+        local row = CreateFrame("Button", nil, d)
+        row:SetHeight(REAGENT_ROW)
+        row:SetPoint("TOPLEFT", 10, -100 - (i - 1) * REAGENT_ROW)
+        row:SetPoint("TOPRIGHT", -8, -100 - (i - 1) * REAGENT_ROW)
+        row.hover = W.Fill(row, "selected", 1)
+        row.hover:SetAllPoints()
+        W.Round(row.hover, Theme.radius.small)
+        row.hover:Hide()
+        row.icon = row:CreateTexture(nil, "ARTWORK")
+        row.icon:SetSize(20, 20)
+        row.icon:SetPoint("LEFT", 6, 0)
+        row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
         row.text = W.Text(row, 1, "text")
-        row.text:SetPoint("LEFT", 0, 0)
-        row.text:SetPoint("RIGHT", -34, 0)
+        row.text:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
+        row.text:SetPoint("RIGHT", -74, 0)
         row.qty = W.Text(row, 1, "textDim")
-        row.qty:SetPoint("RIGHT", 0, 0)
+        row.qty:SetPoint("RIGHT", -8, 0)
         row.qty:SetJustifyH("RIGHT")
+        row:RegisterForClicks("LeftButtonUp")
+        row:SetScript("OnEnter", function(self)
+            self.hover:Show()
+            if not self.itemID then return end
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:SetHyperlink("item:" .. self.itemID)
+            GameTooltip:AddLine(" ")
+            GameTooltip:AddLine("Shift-click: link in chat   Click: search the Auction House", 0.6, 0.6, 0.6)
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function(self)
+            self.hover:Hide()
+            GameTooltip:Hide()
+        end)
+        row:SetScript("OnClick", function(self) reagentClick(self.itemID) end)
         d.reagents[i] = row
     end
+
+    d.linkAll = W.Button(d, "Link all", "plain", function() linkAllReagents() end, "share")
+    d.linkAll:SetHeight(22)
+    d.linkAll:SetPoint("TOPRIGHT", -12, -78)
 
     d.craftersLabel = sectionLabel(d, "Crafters")
     d.craftersSort = W.Text(d, -1, "textDim")
@@ -202,28 +265,42 @@ local function updateDetail()
     end
     if not r then
         for _, row in ipairs(d.reagents) do row:Hide() end
+        d.linkAll:Hide()
         return
     end
     d.icon:SetTexture(Catalog:ItemIcon(r.output) or 134400)
     d.name:SetText(r.name)
     d.prof:SetText(strupper(r.profName or ""))
 
-    local n = r.reagents and #r.reagents / 2 or 0
+    local n = r.reagents and min(#r.reagents / 2, MAX_REAGENTS) or 0
+    d.linkAll:SetShown(n > 0)
     for i, row in ipairs(d.reagents) do
         if i <= n then
-            row.text:SetText(itemLabel(r.reagents[i * 2 - 1]))
-            row.qty:SetText("x" .. r.reagents[i * 2])
+            local itemID, need = r.reagents[i * 2 - 1], r.reagents[i * 2]
+            row.itemID = itemID
+            row.text:SetText(itemLabel(itemID))
+            row.icon:SetTexture(Catalog:ItemIcon(itemID) or 134400)
+            -- "x5", green when you already own enough, amber when not.
+            local have = Catalog:ItemCount(itemID)
+            if have then
+                local color = have >= need and "|cff3fc77f" or "|cffe8a33d"
+                row.qty:SetText(("%s%d|r|cff6e757e/%d|r"):format(color, have, need))
+            else
+                row.qty:SetText("x" .. need)
+            end
             row:Show()
         else
+            row.itemID = nil
             row:Hide()
         end
     end
+    local below = 100 + max(n, 1) * REAGENT_ROW
     d.craftersLabel:ClearAllPoints()
-    d.craftersLabel:SetPoint("TOPLEFT", 16, -(100 + max(n, 1) * 24 + 16))
+    d.craftersLabel:SetPoint("TOPLEFT", 16, -(below + 16))
     d.craftersSort:ClearAllPoints()
-    d.craftersSort:SetPoint("TOPRIGHT", d, "TOPRIGHT", -14, -(100 + max(n, 1) * 24 + 16))
+    d.craftersSort:SetPoint("TOPRIGHT", d, "TOPRIGHT", -14, -(below + 16))
     d.list:ClearAllPoints()
-    d.list:SetPoint("TOPLEFT", 10, -(100 + max(n, 1) * 24 + 36))
+    d.list:SetPoint("TOPLEFT", 10, -(below + 36))
     d.list:SetPoint("BOTTOMRIGHT", -4, 10)
     d.list:SetData(r.crafters, d.shownRecipe == r.id)
     d.shownRecipe = r.id

@@ -129,6 +129,28 @@ function Catalog:ItemIcon(itemID)
     return C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(itemID)
 end
 
+-- A clickable item link, or nil until the item's name is known. Uses the client's own link when
+-- it has one, otherwise builds a plain one (quality colored).
+function Catalog:ItemLink(itemID)
+    local name = self:ItemName(itemID)
+    if not name then return nil end
+    if C_Item and C_Item.GetItemInfo then
+        local ok, _, link = pcall(C_Item.GetItemInfo, itemID)
+        if ok and type(link) == "string" then return link end
+    end
+    local quality = C_Item and C_Item.GetItemQualityByID and C_Item.GetItemQualityByID(itemID) or 1
+    local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    local hex = color and color.hex or "|cffffffff"
+    return ("%s|Hitem:%d::::::::|h[%s]|h|r"):format(hex, itemID, name)
+end
+
+-- How many of an item you own (bags and bank), or nil if the client cannot say.
+function Catalog:ItemCount(itemID)
+    if not (C_Item and C_Item.GetItemCount) then return nil end
+    local ok, count = pcall(C_Item.GetItemCount, itemID, true)
+    return ok and tonumber(count) or nil
+end
+
 function Catalog.FormatDuration(seconds)
     if seconds >= 86400 then return ("%dd %dh"):format(seconds / 86400, (seconds % 86400) / 3600) end
     if seconds >= 3600 then return ("%dh %dm"):format(seconds / 3600, (seconds % 3600) / 60) end

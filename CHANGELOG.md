@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 – 2026-09-29
+- Reagents are real items now: icon, item tooltip on hover, shift-click links the item in chat,
+  a plain click puts its name in the Auction House search box (or in chat if the AH is closed).
+  "Link all" puts every reagent with its count in the chat box.
+- Reagent counts show what you own (bags and bank) against what the recipe needs, green when enough.
+
+
 ## 0.4.0 – 2026-09-29
 - Step 2: recipe sharing in the guild. Recipe IDs travel as small addon messages (prefix "CraftBoard",
   paced, at most 250 bytes); names, output and reagents are asked for once and cached. At login

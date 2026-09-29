@@ -13,7 +13,7 @@ globals = {
 read_globals = {
     "_G",
     "strjoin", "strtrim", "strlower", "tostringall", "tinsert", "tremove", "wipe", "sort", "min", "date", "time",
-    "unpack", "geterrorhandler", "strupper", "strfind", "strsplit", "Ambiguate", "ceil", "floor", "max", "UIParent", "UISpecialFrames", "GetPhysicalScreenSize", "CUSTOM_CLASS_COLORS", "RAID_CLASS_COLORS", "Hush", "ChatFrame_OpenChat", "MailFrame", "MailFrameTab_OnClick", "SendMailNameEditBox", "GetNumGuildMembers", "IsInGuild", "issecretvalue",
+    "unpack", "geterrorhandler", "strupper", "strfind", "IsModifiedClick", "IsShiftKeyDown", "ChatEdit_InsertLink", "AuctionFrame", "BrowseName", "ITEM_QUALITY_COLORS", "strsplit", "Ambiguate", "ceil", "floor", "max", "UIParent", "UISpecialFrames", "GetPhysicalScreenSize", "CUSTOM_CLASS_COLORS", "RAID_CLASS_COLORS", "Hush", "ChatFrame_OpenChat", "MailFrame", "MailFrameTab_OnClick", "SendMailNameEditBox", "GetNumGuildMembers", "IsInGuild", "issecretvalue",
     "CreateFrame", "DEFAULT_CHAT_FRAME", "GameTooltip", "TooltipDataProcessor", "Enum",
     "GetBuildInfo", "GetAddOnMetadata", "C_AddOns", "C_Timer", "C_ChatInfo", "C_GuildInfo", "C_TradeSkillUI", "C_TooltipInfo",
     "UnitGUID", "UnitName", "CHARACTERNAME_SURNAME_SEPARATOR",
