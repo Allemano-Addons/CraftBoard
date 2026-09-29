@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 – 2026-09-30
+- Fix: the window no longer jumps when the scale slider is moved.
+
+
 ## 0.5.0 – 2026-09-30
 - Settings (`/cb settings`, or the gear in the window): font (game fonts plus any LibSharedMedia fonts, with
   preview), text size, accent color (CraftBoard orange, follow Hush, class, or 8 presets), background

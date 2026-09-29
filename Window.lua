@@ -673,7 +673,11 @@ function Window.Frame() return frame end
 CB:OnSettingChanged(function(key, value)
     if not frame then return end
     if key == "scale" then
-        savePosition()
+        -- The saved position is in UIParent units, so it stays valid across scale changes.
+        -- Re-reading GetLeft() right after SetScale would give stale numbers (layout lags a frame),
+        -- so the window is only measured once, when it has never been placed by hand.
+        local d = CB.db.settings
+        if not (d.left and d.top) then savePosition() end
         frame:SetScale(value)
         restorePosition()
     elseif key == "bgAlpha" then
