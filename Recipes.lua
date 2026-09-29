@@ -142,7 +142,7 @@ CB:AddSlashCommand("recipes", function()
         return
     end
     for _, rec in pairs(chars) do
-        CB:Print(("|cffb57edc%s|r (%s)"):format(rec.name or "?", rec.class or "?"))
+        CB:Print(("|cfff0763a%s|r (%s)"):format(rec.name or "?", rec.class or "?"))
         local any = false
         for _, prof in pairs(rec.profs) do
             any = true

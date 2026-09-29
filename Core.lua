@@ -4,11 +4,11 @@ local addonName, CB = ...
 
 CB.name = addonName
 CB.SCHEMA = 1
-CB.COLOR = "B57EDC" -- CraftBoard violet
+CB.COLOR = "F0763A" -- CraftBoard orange (the Allemano mark)
 
 function CB:Print(...)
     local msg = strjoin(" ", tostringall(...))
-    DEFAULT_CHAT_FRAME:AddMessage("|cffb57edcCraftBoard|r " .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cfff0763aCraftBoard|r " .. msg)
 end
 
 -- ---------------------------------------------------------------------------

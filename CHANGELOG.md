@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 – 2026-09-29
+- The Allemano look: rounded corners and borders, orange accent (the Allemano mark), the new logo in
+  the title bar and on the launcher, profession icons in the sidebar, search / whisper / mail / sync icons.
+  Artwork sources moved to `Design/`, in-game media is `Media/Icons`, `Media/Logo`, `Media/ui`.
+
+
 ## 0.2.1 – 2026-09-29
 - Fix: the window failed to open (a "." instead of ":" on the separator line).
 
