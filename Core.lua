@@ -77,6 +77,8 @@ local function initDB()
     db.schema = db.schema or CB.SCHEMA
     db.settings = db.settings or {}
     db.probe = db.probe or {}
+    db.chars = db.chars or {}
+    db.recipes = db.recipes or {}
     -- Errors from before the saved data was loaded are kept too.
     db.errors = db.errors or {}
     for _, e in ipairs(CB.errors) do tinsert(db.errors, e) end
@@ -134,7 +136,7 @@ SlashCmdList.CRAFTBOARD = function(msg)
         local ok, err = pcall(c.fn, rest)
         if not ok then CB:RecordError("/cb " .. cmd, err) end
     else
-        CB:Print("CraftBoard v" .. tostring(CB.version) .. " (step 0: probe)")
+        CB:Print("CraftBoard v" .. tostring(CB.version) .. " (step 1: own recipes)")
         for _, name in ipairs(slashOrder) do
             CB:Print(("/cb %s - %s"):format(name, slashCommands[name].help or ""))
         end

@@ -1,8 +1,10 @@
 ## Interface: 16001
 ## Title: CraftBoard
-## Notes: Who in your guild can craft what. Part of Allemano Addons. (Step 0: probe only)
-## Version: 0.0.2
+## Notes: Who in your guild can craft what. Part of Allemano Addons. (Step 1: saves your recipes)
+## Version: 0.1.0
 ## SavedVariables: CraftBoardDB
 
 Core.lua
+Recipes.lua
+GuildProfessions.lua
 Probe.lua

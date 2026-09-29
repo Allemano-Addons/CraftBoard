@@ -22,6 +22,6 @@ read_globals = {
     "GetNumTradeSkills", "GetTradeSkillInfo", "GetTradeSkillLine", "GetTradeSkillItemLink", "GetTradeSkillRecipeLink",
     "GetTradeSkillNumMade", "GetTradeSkillNumReagents", "GetTradeSkillReagentInfo", "GetTradeSkillReagentItemLink",
     "GetTradeSkillTools", "GetTradeSkillCooldown", "GetTradeSkillIcon", "GetTradeSkillSelectionIndex",
-    "C_Item", "IsInGuild", "GetNumCrafts", "GetCraftInfo", "GetCraftDisplaySkillLine", "GetCraftItemLink", "GetCraftRecipeLink",
+    "C_Item", "IsInGuild", "UnitClass", "GetProfessions", "GetNumCrafts", "GetCraftInfo", "GetCraftDisplaySkillLine", "GetCraftItemLink", "GetCraftRecipeLink",
     "GetCraftNumReagents", "GetCraftReagentInfo", "GetCraftReagentItemLink", "GetCraftSpellFocus",
 }

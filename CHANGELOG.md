@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0 – 2026-09-29
+- Step 1: recipes for every character are saved automatically whenever a profession window is
+  opened (learned recipes, output item, reagents, skill level, cooldown expiry). `/cb recipes` lists them.
+- Guild profession list is saved at login; `/cb guildprof` tests whether expanding a profession
+  header lists the members and their skill (players without CraftBoard).
+
 ## 0.0.2 – 2026-09-29
 - First probe result: WoW Forever has no Classic trade skill API, only `C_TradeSkillUI`. Profession
   windows are now recorded through it (learned vs. unlearned recipes, the first six learned ones
