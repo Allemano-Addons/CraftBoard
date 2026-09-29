@@ -48,6 +48,14 @@ local function fields(tbl)
     return out
 end
 
+-- Calls fn protected and keeps a returned table's fields (try() would flatten it to "<table>").
+local function tryFields(fn, ...)
+    if type(fn) ~= "function" then return { missing = true } end
+    local ok, res = pcall(fn, ...)
+    if not ok then return { err = str(res) } end
+    return fields(res)
+end
+
 local function fnList(tbl)
     local list = {}
     if type(tbl) == "table" then
@@ -202,34 +210,127 @@ local function snapshotWindow(kind, trigger)
     return snap
 end
 
--- Retail-style C_TradeSkillUI, if this client has it (recorded next to the Classic API).
-local function probeTradeSkillUI()
-    if type(C_TradeSkillUI) ~= "table" then return { missing = true } end
-    local out = {
-        baseInfo = try(function() return fields(C_TradeSkillUI.GetBaseProfessionInfo()) end),
-        childInfo = try(function() return fields(C_TradeSkillUI.GetChildProfessionInfo()) end),
-        isOpen = try(C_TradeSkillUI.IsTradeSkillReady),
+-- ---------------------------------------------------------------------------
+-- 3b. Modern profession API (C_TradeSkillUI): what WoW Forever actually uses. Per open
+--     profession: learned vs. not learned recipes, the first learned ones in full.
+-- ---------------------------------------------------------------------------
+
+local TS = C_TradeSkillUI
+
+-- One recipe in full: info, output, reagents (slot → first item, quantity), links, cooldown.
+local function modernRecipe(id)
+    local r = {
+        id = str(id), info = tryFields(TS.GetRecipeInfo, id),
+        itemLink = try(TS.GetRecipeItemLink, id), recipeLink = try(TS.GetRecipeLink, id),
+        cooldown = try(TS.GetRecipeCooldown, id), craftable = try(TS.GetCraftableCount, id),
+        lineForRecipe = try(TS.GetTradeSkillLineForRecipe, id), reagents = {},
     }
-    local okIds, ids = pcall(C_TradeSkillUI.GetAllRecipeIDs)
-    if okIds and type(ids) == "table" then
-        out.recipeCount = #ids
-        out.firstRecipes = {}
-        for i = 1, min(#ids, 3) do
-            local id = ids[i]
-            out.firstRecipes[i] = {
-                id = str(id),
-                info = try(function() return fields(C_TradeSkillUI.GetRecipeInfo(id)) end),
-                schematic = try(function() return fields(C_TradeSkillUI.GetRecipeSchematic(id, false)) end),
-                itemLink = try(C_TradeSkillUI.GetRecipeItemLink, id),
+    local ok, schematic = pcall(TS.GetRecipeSchematic, id, false)
+    if ok and type(schematic) == "table" then
+        r.schematic = fields(schematic)
+        for s, slot in ipairs(schematic.reagentSlotSchematics or {}) do
+            local first = slot.reagents and slot.reagents[1] or {}
+            local itemID = first.itemID
+            local name = itemID and C_Item and C_Item.GetItemNameByID and select(2, pcall(C_Item.GetItemNameByID, itemID))
+            r.reagents[s] = {
+                itemID = str(itemID), name = str(name), quantity = str(slot.quantityRequired),
+                type = str(slot.reagentType), options = slot.reagents and #slot.reagents or 0,
             }
         end
     else
-        out.allRecipeIDs = okIds and str(ids) or ("error: " .. str(ids))
+        r.schematic = { err = str(schematic) }
     end
+    return r
+end
+
+-- The recipe the guild query below asks about (the first learned one we see).
+local guildQueryRecipe
+
+local function snapshotModern(trigger)
+    if type(TS) ~= "table" then return nil end
+    local base = tryFields(TS.GetBaseProfessionInfo)
+    local snap = {
+        t = time(), trigger = trigger, base = base, child = tryFields(TS.GetChildProfessionInfo),
+        ready = try(TS.IsTradeSkillReady), linked = try(TS.IsTradeSkillLinked), guild = try(TS.IsTradeSkillGuild),
+        guildEnabled = try(TS.IsGuildTradeSkillsEnabled), listLink = try(TS.GetTradeSkillListLink),
+        learned = 0, unlearned = 0, learnedNames = {}, details = {},
+    }
+    local ok, ids = pcall(TS.GetAllRecipeIDs)
+    if not ok or type(ids) ~= "table" then
+        snap.allRecipeIDs = { err = str(ids) }
+        return snap
+    end
+    snap.total = #ids
+    for _, id in ipairs(ids) do
+        local okInfo, info = pcall(TS.GetRecipeInfo, id)
+        if okInfo and type(info) == "table" and info.learned then
+            snap.learned = snap.learned + 1
+            if #snap.learnedNames < MAX_ROWS then
+                snap.learnedNames[#snap.learnedNames + 1] = str(info.name) .. " | " .. str(id) .. " | " .. str(info.relativeDifficulty)
+            end
+            if #snap.details < DETAIL_ROWS then snap.details[#snap.details + 1] = modernRecipe(id) end
+            if not guildQueryRecipe then
+                local okLine, lineID = pcall(TS.GetTradeSkillLineForRecipe, id)
+                guildQueryRecipe = { recipeID = id, skillLineID = okLine and lineID or nil, name = info.name }
+            end
+        else
+            snap.unlearned = snap.unlearned + 1
+        end
+    end
+    local d = data()
+    d.modern = d.modern or {}
+    d.modern[base.professionName or base.name or ("profession " .. str(base.professionID))] = snap
+    return snap
+end
+
+-- ---------------------------------------------------------------------------
+-- 3c. Blizzard's own guild profession system (Cataclysm-style). If it works on Forever,
+--     CraftBoard can ask "who in the guild knows this recipe?" without them having the addon.
+-- ---------------------------------------------------------------------------
+
+local GUILD_APIS = {
+    "GetNumGuildTradeSkill", "GetGuildTradeSkillInfo", "ExpandGuildTradeSkillHeader", "QueryGuildRecipes",
+    "ViewGuildRecipes", "GetGuildRecipeInfoPostQuery", "GetGuildRecipeMember", "GetGuildMemberRecipes",
+}
+
+local function probeGuildProfessions()
+    local out = { apis = {}, rows = {} }
+    for _, name in ipairs(GUILD_APIS) do out.apis[name] = type(_G[name]) end
+    out.enabled = try(TS and TS.IsGuildTradeSkillsEnabled)
+    local okN, n = pcall(_G.GetNumGuildTradeSkill)
+    out.count = okN and str(n) or { err = str(n) }
+    for i = 1, min(okN and tonumber(n) or 0, 15) do out.rows[i] = try(_G.GetGuildTradeSkillInfo, i) end
     return out
 end
 
+-- Asks the server who in the guild knows guildQueryRecipe; the answer comes as an event.
+local guildQueried = false -- once per session: the list event fires often
+local function queryGuildRecipe()
+    if guildQueried or not guildQueryRecipe or not (C_GuildInfo and C_GuildInfo.QueryGuildMembersForRecipe) then return end
+    guildQueried = true
+    local d = data()
+    d.guildQuery = { asked = guildQueryRecipe.name, recipeID = str(guildQueryRecipe.recipeID),
+        skillLineID = str(guildQueryRecipe.skillLineID), answers = {} }
+    d.guildQuery.sent = try(C_GuildInfo.QueryGuildMembersForRecipe, guildQueryRecipe.skillLineID, guildQueryRecipe.recipeID)
+end
+
+local recipeEventKnown = CB:RegisterEvent("GUILD_RECIPE_KNOWN_BY_MEMBERS", function(_, ...)
+    if not CB.db then return end
+    local q = data().guildQuery
+    if not q then return end
+    local answer = { args = pack(...), info = try(_G.GetGuildRecipeInfoPostQuery), members = {} }
+    local okInfo, _, _, numMembers = pcall(_G.GetGuildRecipeInfoPostQuery)
+    for i = 1, min(okInfo and tonumber(numMembers) or 0, 10) do answer.members[i] = try(_G.GetGuildRecipeMember, i) end
+    q.answers[#q.answers + 1] = answer
+    CB:Print(("Probe: the guild answered for %s (%s members)."):format(str(q.asked), str(numMembers)))
+end)
+local guildEventsKnown = {}
+guildEventsKnown.GUILD_TRADESKILL_UPDATE = CB:RegisterEvent("GUILD_TRADESKILL_UPDATE", function()
+    if CB.db then data().guildProfessions = probeGuildProfessions() end
+end) and "ok" or "unknown"
+
 local pendingSnapshot = {}
+local lastModernMsg
 local function scheduleSnapshot(kind, trigger)
     if not CB.db or pendingSnapshot[kind] then return end
     pendingSnapshot[kind] = true
@@ -237,8 +338,18 @@ local function scheduleSnapshot(kind, trigger)
     C_Timer.After(0.5, function()
         pendingSnapshot[kind] = nil
         CB:Call("probe " .. kind .. " window", function()
+            if kind == "trade" and type(GetNumTradeSkills) ~= "function" then
+                -- WoW Forever: only the modern API.
+                local snap = snapshotModern(trigger)
+                if not snap then return end
+                local name = snap.base.professionName or snap.base.name or "?"
+                local msg = ("Probe: %s recorded (%d learned of %s recipes)."):format(str(name), snap.learned, str(snap.total))
+                if msg ~= lastModernMsg then CB:Print(msg) end
+                lastModernMsg = msg
+                if IsInGuild() then queryGuildRecipe() end
+                return
+            end
             local snap = snapshotWindow(kind, trigger)
-            if kind == "trade" then data().tradeSkillUI = probeTradeSkillUI() end
             if snap.line.missing then return end -- this client has no such window API
             CB:Print(("Probe: %s window recorded (%d recipes, %d headers)."):format(
                 str(snap.line[1]), snap.recipes, snap.headers))
@@ -343,6 +454,11 @@ local function runProbe()
     d.knownEvents = knownEvents
     d.professions = probeProfessions()
     d.tooltip = tip
+    d.guildProfessions = probeGuildProfessions()
+    d.guildEvents = {
+        GUILD_TRADESKILL_UPDATE = guildEventsKnown.GUILD_TRADESKILL_UPDATE,
+        GUILD_RECIPE_KNOWN_BY_MEMBERS = recipeEventKnown and "ok" or "unknown",
+    }
 
     -- Ask for a fresh roster, then read it once it has had time to arrive.
     if C_GuildInfo and C_GuildInfo.GuildRoster then pcall(C_GuildInfo.GuildRoster)

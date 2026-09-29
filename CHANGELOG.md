@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.2 – 2026-09-29
+- First probe result: WoW Forever has no Classic trade skill API, only `C_TradeSkillUI`. Profession
+  windows are now recorded through it (learned vs. unlearned recipes, the first six learned ones
+  in full: output, reagents with item names and quantities, links, cooldown, craftable count).
+- Probe of Blizzard's guild profession system: `IsGuildTradeSkillsEnabled`, the guild profession
+  list, and one `QueryGuildMembersForRecipe` per session (who in the guild knows a recipe, even
+  without CraftBoard).
+- Fix: C_ results were saved as "<table>" instead of their fields; the missing chat message when a
+  profession window opens.
+
 ## 0.0.1 – 2026-09-29
 
 ### Step 0 – Probe
