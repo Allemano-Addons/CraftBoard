@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 – 2026-09-29
+- "You share" dims professions whose window has not been opened yet and says which one to open.
+
+
 ## 0.3.0 – 2026-09-29
 - The Allemano look: rounded corners and borders, orange accent (the Allemano mark), the new logo in
   the title bar and on the launcher, profession icons in the sidebar, search / whisper / mail / sync icons.

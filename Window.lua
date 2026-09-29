@@ -404,12 +404,23 @@ local function updateShare()
         for name, k in pairs(rec.known or {}) do lines[#lines + 1] = { name = name, skill = k.skill } end
         table.sort(lines, function(a, b) return a.name < b.name end)
     end
+    local saved, missing = {}, nil
+    for _, prof in pairs(rec and rec.profs or {}) do saved[prof.name] = true end
     for i, l in ipairs(s.shareLines) do
         local line = lines[i]
         l.name:SetText(line and line.name or "")
         l.skill:SetText(line and line.skill or "")
+        local isSaved = line and saved[line.name]
+        l.name:SetTextColor(Theme:Color(isSaved and "text" or "textFaint"))
+        if line and not isSaved then missing = missing or line.name end
     end
-    s.shareNote:SetText(#lines == 0 and "Open a profession window to add your recipes" or "Updates when you open your tradeskill window")
+    if #lines == 0 then
+        s.shareNote:SetText("Open a profession window to add your recipes")
+    elseif missing then
+        s.shareNote:SetText("Open your " .. missing .. " window to share it (dimmed = not opened yet)")
+    else
+        s.shareNote:SetText("Updates when you open your tradeskill window")
+    end
 end
 
 -- ---------------------------------------------------------------------------
