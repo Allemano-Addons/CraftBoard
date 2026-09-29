@@ -1,0 +1,17 @@
+# Changelog
+
+## 0.0.1 – 2026-09-29
+
+### Step 0 – Probe
+- Addon skeleton: `CraftBoard.toc` (Interface 16001), namespace, event dispatcher, `CraftBoardDB`,
+  error log (`/cb errors`, WoW Forever hides Lua errors), `/cb` and `/craftboard`.
+- `/cb probe`: records which profession APIs exist (Classic trade skill + craft API, Retail
+  `C_TradeSkillUI`), this character's professions, guild roster names, and sends addon messages of
+  10–300 bytes to the guild and to yourself to find the size limit. Saved per character in
+  `CraftBoardDB.probe` (read the SavedVariables file after /reload).
+- Every time a profession window opens or updates, its recipes are recorded (all names, the first
+  six in full: item and recipe links, reagents with counts and links, tools, cooldown).
+- Event log: which profession, guild and addon message events fire, how often, last arguments.
+- `/cb probe tooltip`: toggles a test line on item tooltips (checks whether CraftBoard can show
+  "Craftable by" there later).
+- Read-only: never crafts and never calls protected functions.
