@@ -22,7 +22,7 @@ CB.Share = Share
 
 local PREFIX = "CraftBoard"
 local MAX_BYTES = 250           -- Forever silently cuts at 255
-local SEND_INTERVAL = 0.35      -- ~3 messages/s, under the chat throttle
+local SEND_INTERVAL = 0.3       -- ~3 messages/s, under the chat throttle
 local ASK_COOLDOWN = 600        -- seconds between login asks
 local MAX_RECIPES_PER_PROF = 3000
 local META_BATCH = 25
@@ -180,6 +180,8 @@ local function guildRecord(sender, class)
     return rec
 end
 
+Share.stats = { asked = 0, received = 0, requests = 0, answered = 0 }
+
 local function requestMeta(sender, rec)
     local unknown, seen = {}, {}
     for _, prof in pairs(rec.profs) do
@@ -192,6 +194,7 @@ local function requestMeta(sender, rec)
             end
         end
     end
+    Share.stats.asked = Share.stats.asked + #unknown
     for i = 1, #unknown, META_BATCH do
         enqueue("WHISPER", sender, "N|" .. table.concat(unknown, ",", i, min(i + META_BATCH - 1, #unknown)))
     end
@@ -201,7 +204,7 @@ function handlers.A(sender)
     if not sharingOn() then return end
     local rec = ownRecord()
     if not rec or not next(rec.profs) then return end
-    C_Timer.After(1 + math.random() * 11, function()
+    C_Timer.After(0.5 + math.random() * 5, function()
         enqueue("WHISPER", sender, "H|" .. Share.Hash(rec.profs))
     end)
 end
@@ -213,7 +216,7 @@ function handlers.H(sender, _, hash)
     if rec and rec.hash == hash then return end
     if askedFrom[sender] and time() - askedFrom[sender] < ASK_COOLDOWN then return end
     askedFrom[sender] = time()
-    C_Timer.After(0.5 + math.random() * 4, function() enqueue("WHISPER", sender, "Q") end)
+    C_Timer.After(0.2 + math.random() * 1.5, function() enqueue("WHISPER", sender, "Q") end)
 end
 
 function handlers.Q(sender)
@@ -277,12 +280,14 @@ end
 
 function handlers.N(sender, _, list)
     if not sharingOn() then return end
+    Share.stats.requests = Share.stats.requests + 1
     local count = 0
     for id in (list or ""):gmatch("%d+") do
         id = tonumber(id)
         local meta = id and CB.db.recipes[id]
         if meta and meta.n and count < META_BATCH then
             count = count + 1
+            Share.stats.answered = Share.stats.answered + 1
             local r = {}
             for k = 1, #(meta.r or {}), 2 do r[#r + 1] = meta.r[k] .. ":" .. meta.r[k + 1] end
             enqueue("WHISPER", sender, ("M|%d|%d|%s|%s"):format(id, meta.o or 0, clean(meta.n):sub(1, 40), table.concat(r, ",")))
@@ -293,6 +298,7 @@ end
 function handlers.M(_, _, id, output, name, reagents)
     id, output = num(id, 1, 2147483647), num(output, 0, 2147483647)
     if not (id and output and name and name ~= "") then return end
+    Share.stats.received = Share.stats.received + 1
     local meta = CB.db.recipes[id] or {}
     CB.db.recipes[id] = meta
     meta.n = meta.n or name:sub(1, 60)
@@ -387,7 +393,7 @@ function CB:OnRecipesChanged(rec)
     if previous then previous(self, rec) end
     if changeTimer then return end
     changeTimer = true
-    C_Timer.After(5, function() CB:Call("share broadcast", broadcastChanges) end)
+    C_Timer.After(3, function() CB:Call("share broadcast", broadcastChanges) end)
 end
 
 -- A guild switch invalidates what we collected.
@@ -425,6 +431,28 @@ CB:AddSlashCommand("share", function(arg)
         CB:Print("Sharing your recipes: " .. (sharingOn() and "on" or "off") .. " (/cb share on|off)")
     end
 end, "share your recipes with the guild on/off")
+
+CB:AddSlashCommand("sharestatus", function()
+    local members, recipes, unnamed = 0, 0, 0
+    local seen = {}
+    for _, rec in pairs(CB.db.guild) do
+        members = members + 1
+        for _, prof in pairs(rec.profs) do
+            for _, id in ipairs(prof.recipes) do
+                if not seen[id] then
+                    seen[id] = true
+                    recipes = recipes + 1
+                    local meta = CB.db.recipes[id]
+                    if not (meta and meta.n) then unnamed = unnamed + 1 end
+                end
+            end
+        end
+    end
+    local st = Share.stats
+    CB:Print(("Share: %d members with data, %d recipes, %d still unnamed."):format(members, recipes, unnamed))
+    CB:Print(("Names asked for %d, answers received %d; requests from others %d, answered %d."):format(
+        st.asked, st.received, st.requests, st.answered))
+end, "show how the recipe sharing is doing")
 
 CB:AddSlashCommand("sync", function()
     if Share.Ask(true) then CB:Print("Asked the guild for recipes.") else CB:Print("You are not in a guild.") end

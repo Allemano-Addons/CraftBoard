@@ -177,6 +177,28 @@ local function linkAllReagents()
     if #parts > 0 then ChatEdit_InsertLink(table.concat(parts, ", ")) end
 end
 
+-- The crafted item's tooltip (or the recipe's, for enchants); shift-click links it in chat.
+local function showRecipeTip(owner, r)
+    if not r then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    local link = r.output and ("item:" .. r.output) or ("enchant:" .. r.id)
+    local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, link)
+    if not ok or GameTooltip:NumLines() == 0 then GameTooltip:SetText(r.name) end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Shift-click: link in chat", 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+end
+
+local function linkRecipe(r)
+    if not r then return end
+    local link = r.output and Catalog:ItemLink(r.output)
+    if not link then
+        local ok, l = pcall(C_TradeSkillUI.GetRecipeLink, r.id)
+        link = ok and type(l) == "string" and l or ("|cffffd000|Henchant:%d|h[%s]|h|r"):format(r.id, r.name)
+    end
+    ChatEdit_InsertLink(link)
+end
+
 local function buildDetail(parent)
     local d = CreateFrame("Frame", nil, parent)
     d:SetWidth(DETAIL_W)
@@ -191,6 +213,11 @@ local function buildDetail(parent)
     d.iconBg = W.Fill(d, "field", 1, "BACKGROUND")
     d.iconBg:SetAllPoints(d.icon)
     W.Round(d.iconBg, Theme.radius.control)
+    d.iconBtn = CreateFrame("Button", nil, d)
+    d.iconBtn:SetAllPoints(d.icon)
+    d.iconBtn:SetScript("OnEnter", function(self) showRecipeTip(self, selectedRecipe()) end)
+    d.iconBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    d.iconBtn:SetScript("OnClick", function() if IsShiftKeyDown() then linkRecipe(selectedRecipe()) end end)
     d.name = W.Text(d, 4, "text")
     d.name:SetPoint("TOPLEFT", d.icon, "TOPRIGHT", 12, -3)
     d.name:SetPoint("RIGHT", -14, 0)
@@ -268,7 +295,7 @@ local function updateDetail()
         d.linkAll:Hide()
         return
     end
-    d.icon:SetTexture(Catalog:ItemIcon(r.output) or 134400)
+    d.icon:SetTexture(Catalog:ItemIcon(r.output) or r.icon or 134400)
     d.name:SetText(r.name)
     d.prof:SetText(strupper(r.profName or ""))
 
@@ -333,21 +360,25 @@ local function createRecipeRow(list)
     row.cooldown = W.Text(row, 0, "textFaint")
     row.cooldown:SetPoint("LEFT", row, "LEFT", 450, 0)
     row:SetScript("OnClick", function(self)
+        if IsShiftKeyDown() then linkRecipe(self.recipe) return end
         state.selected = self.recipeID
         Window:RefreshLists()
     end)
     row:SetScript("OnEnter", function(self)
         if self.recipeID ~= state.selected then self.bg:SetAlpha(0.5) self.bg:Show() end
+        showRecipeTip(self, self.recipe)
     end)
     row:SetScript("OnLeave", function(self)
         if self.recipeID ~= state.selected then self.bg:Hide() end
+        GameTooltip:Hide()
     end)
     return row
 end
 
 local function updateRecipeRow(row, r)
     row.recipeID = r.id
-    row.icon:SetTexture(Catalog:ItemIcon(r.output) or 134400)
+    row.recipe = r
+    row.icon:SetTexture(Catalog:ItemIcon(r.output) or r.icon or 134400)
     row.name:SetText(r.name)
     row.sub:SetText(r.profName or "")
     local total = #r.crafters
@@ -702,7 +733,7 @@ local pending = false
 local function later()
     if pending or not frame or not frame:IsShown() then return end
     pending = true
-    C_Timer.After(1, function()
+    C_Timer.After(0.3, function()
         pending = false
         CB:Call("window refresh", Window.Refresh, Window)
     end)

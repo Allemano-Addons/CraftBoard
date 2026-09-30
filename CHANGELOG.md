@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.2 – 2026-09-30
+- Recipes shared by other members are named locally when the client knows them (recipe IDs are spell IDs),
+  so fewer show up as "Recipe 12345" with a question-mark icon. Recipes without an output item use their own icon.
+- `/cb sharestatus` shows how the sharing is doing: members with data, recipes still unnamed and how many
+  names were asked for and answered.
+- Hover a recipe in the list (or the icon in the detail panel) for the crafted item's tooltip, or the recipe's for
+  enchants. Shift-click links it in chat.
+- Sharing reacts sooner: shorter waits before answering and broadcasting, and the window refreshes after 0.3 s.
+
+
 ## 0.6.1 – 2026-09-30
 - Releases are now packaged and uploaded to CurseForge automatically from GitHub.
 

@@ -41,6 +41,40 @@ function Catalog:MemberCounts()
     return shared, total
 end
 
+-- Recipe IDs are spell IDs and C_TradeSkillUI answers for any recipe, so a recipe another member
+-- shared can usually be named without asking that member. Cached in CraftBoardDB.recipes; each ID is
+-- tried once per session.
+local tried = {}
+local function resolveLocal(rid)
+    local recipes = CB.db.recipes
+    local meta = recipes[rid]
+    if (meta and meta.n) or tried[rid] then return meta end
+    tried[rid] = true
+    local TS = C_TradeSkillUI
+    local name, icon
+    if TS and TS.GetRecipeInfo then
+        local ok, info = pcall(TS.GetRecipeInfo, rid)
+        if ok and type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+            name, icon = info.name, info.icon
+        end
+    end
+    if not name and C_Spell and C_Spell.GetSpellName then
+        local ok, spellName = pcall(C_Spell.GetSpellName, rid)
+        if ok and type(spellName) == "string" and spellName ~= "" then name = spellName end
+    end
+    if not name then return meta end
+    meta = meta or {}
+    meta.n = name
+    meta.i = meta.i or icon
+    if not meta.r and TS and CB.ReagentList then
+        local reagents, output = CB.ReagentList(rid)
+        meta.r = reagents
+        meta.o = meta.o or output
+    end
+    recipes[rid] = meta
+    return meta
+end
+
 local function compareCrafters(a, b)
     if a.online ~= b.online then return a.online end
     if a.ready ~= b.ready then return a.ready end
@@ -61,9 +95,9 @@ function Catalog:Build()
             for _, rid in ipairs(prof.recipes or {}) do
                 local r = byRecipe[rid]
                 if not r then
-                    local meta = db.recipes[rid] or {}
+                    local meta = resolveLocal(rid) or db.recipes[rid] or {}
                     r = {
-                        id = rid, name = meta.n or ("Recipe " .. rid), output = meta.o, reagents = meta.r,
+                        id = rid, name = meta.n or ("Recipe " .. rid), output = meta.o, reagents = meta.r, icon = meta.i,
                         profName = prof.name, hasCD = meta.cdr and true or false, crafters = {}, has = {},
                     }
                     byRecipe[rid] = r

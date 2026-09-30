@@ -9,7 +9,7 @@
 local _, CB = ...
 
 local TS = C_TradeSkillUI
-local SNAPSHOT_DELAY = 1 -- TRADE_SKILL_LIST_UPDATE fires a lot while a window loads
+local SNAPSHOT_DELAY = 0.5 -- TRADE_SKILL_LIST_UPDATE fires a lot while a window loads
 
 function CB:PlayerFullName()
     local first, second = UnitName("player")
@@ -48,6 +48,8 @@ local function reagentList(recipeID)
     end
     return list, schematic.outputItemID
 end
+
+CB.ReagentList = reagentList
 
 -- Remembers a recipe's static data once; later snapshots only fill in what is missing.
 local function cacheRecipe(recipeID, name, professionID)
