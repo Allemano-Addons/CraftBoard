@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 – 2026-09-30
+- Releases are now packaged and uploaded to CurseForge automatically from GitHub.
+
+
 ## 0.6.0 – 2026-09-30
 - Item tooltips get a "Craftable by: ..." line: who in the guild (and which of your characters) can make the
   item, online members first in their class color, offline ones dimmed, up to six names then "+N more".
