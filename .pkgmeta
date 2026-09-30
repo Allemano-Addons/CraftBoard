@@ -1,0 +1,16 @@
+package-as: CraftBoard
+
+ignore:
+  - Design
+  - .luacheckrc
+  - .gitattributes
+  - .github
+  - Media/Logo/cb_mark_128.tga
+  - Media/Logo/cb_mark_256.tga
+  - Media/Logo/cb_mark_white_64.tga
+  - Media/Logo/cb_mark_white_128.tga
+  - Media/Logo/cb_mark_white_256.tga
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown

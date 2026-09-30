@@ -1,8 +1,11 @@
 ## Interface: 16001
 ## Title: CraftBoard
-## Notes: Who in your guild can craft what. Part of Allemano Addons. (Guild crafting directory)
+## Notes: See who in your guild can craft what: search every recipe, whisper the crafters, link reagents. Part of Allemano Addons.
+## Author: Allemano
 ## Version: 0.6.0
+## Category: Professions
 ## SavedVariables: CraftBoardDB
+## IconTexture: Interface\AddOns\CraftBoard\Media\Logo\cb_mark_64
 
 Core.lua
 Recipes.lua
