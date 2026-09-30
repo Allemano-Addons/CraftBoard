@@ -476,6 +476,7 @@ function W.ProfessionIcon(name) return PROFESSION_ICONS[name] or "recipe" end
 
 W.LOGO = MEDIA .. "Logo\\cb_mark_64"
 W.LOGO_ROUND = MEDIA .. "Logo\\cb_minimap"
+W.MARK = MEDIA .. "wow\\mark" -- the launcher mark, same geometry as the other Allemano addons
 
 -- Own flat tooltip. lines = string or { "line", ... }.
 local tip

@@ -1,8 +1,10 @@
--- Launcher: a small movable button (own, no LibDBIcon). Click opens the window, drag moves it.
+-- Launcher: a small movable button (own, no LibDBIcon), the same look and size as the other
+-- Allemano addons' buttons (AltBoard's): a dark rounded square with the mark filling it.
+-- Click opens the window, drag moves it.
 local _, CB = ...
 
 local Theme, W = CB.Theme, CB.W
-local SIZE = 32
+local SIZE = 30
 local button
 
 local function savePosition()
@@ -29,23 +31,22 @@ local function build()
     button:RegisterForClicks("LeftButtonUp")
     button:RegisterForDrag("LeftButton")
 
-    -- The round Allemano mark; if the texture does not load, a flat panel with the accent.
+    local _, border = W.Surface(button, "sidebar", 0.95, Theme.radius.control)
+
+    -- The mark in its own colors; if the texture does not load, an accent-colored square.
     local logo = button:CreateTexture(nil, "ARTWORK")
-    logo:SetAllPoints()
-    if logo:SetTexture(W.LOGO_ROUND) == false then
+    logo:SetPoint("TOPLEFT", 2, -2)
+    logo:SetPoint("BOTTOMRIGHT", -2, 2)
+    if logo:SetTexture(W.MARK) == false then
         logo:SetColorTexture(Theme:Color("accent"))
     end
-    local ring = button:CreateTexture(nil, "OVERLAY")
-    ring:SetAllPoints()
-    ring:SetTexture("Interface\\AddOns\\CraftBoard\\Media\\ui\\ring10")
-    ring:SetVertexColor(Theme:Color("line"))
 
     button:SetScript("OnEnter", function(self)
-        ring:SetVertexColor(Theme:Color("accent"))
+        border:SetColor(Theme:Color("accent"))
         W.ShowTooltip(self, "CraftBoard - who in your guild can craft what")
     end)
     button:SetScript("OnLeave", function()
-        ring:SetVertexColor(Theme:Color("line"))
+        border:SetColor(Theme:Color("line"))
         W.HideTooltip()
     end)
     button:SetScript("OnClick", function() CB.Window.Toggle() end)

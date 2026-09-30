@@ -6,7 +6,7 @@
 ## Category: Professions
 ## X-Curse-Project-ID: 1719025
 ## SavedVariables: CraftBoardDB
-## IconTexture: Interface\AddOns\CraftBoard\Media\Logo\cb_mark_64
+## IconTexture: Interface\AddOns\CraftBoard\Media\wow\icon
 
 Core.lua
 Recipes.lua
