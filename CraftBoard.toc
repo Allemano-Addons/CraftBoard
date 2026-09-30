@@ -4,6 +4,7 @@
 ## Author: Allemano
 ## Version: 0.6.0
 ## Category: Professions
+## X-Curse-Project-ID: 1719025
 ## SavedVariables: CraftBoardDB
 ## IconTexture: Interface\AddOns\CraftBoard\Media\Logo\cb_mark_64
 
