@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.3 – 2026-09-30
+- The launcher button and the addon-list icon now look like the other Allemano addons: a 30 px dark square with the mark filling it, and the tile icon in the addon list.
+
 ## 0.6.2 – 2026-09-30
 - Recipes shared by other members are named locally when the client knows them (recipe IDs are spell IDs),
   so fewer show up as "Recipe 12345" with a question-mark icon. Recipes without an output item use their own icon.
